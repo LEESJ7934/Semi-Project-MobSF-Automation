@@ -3,8 +3,10 @@ import os
 import time
 from scripts.mass_dynamic_analysis import upload_apk, run_dynamic_with_frida, request_dynamic_scan
 
+
+#정적 분석 실행
 def run_mass_static_analysis():
-    """MobSF 정적 분석 실행"""
+    
     apk_dir = r"C:\Users\Seung Jun\Desktop\Semi-Project\Semi-Project-MobSF-Automation\data\apk"
     server = "127.0.0.1:8000"
     api_key = "3ad5653dd25b1946d5a20a0053d36fd0dbb1817684f2a9b0a1915f7b4505982b"
@@ -23,7 +25,7 @@ def run_mass_static_analysis():
     subprocess.run(command, check=True)
     print("[+] Static analysis completed.\n")
 
-
+#동적 분석 실행
 def run_mass_dynamic_analysis():
     """Frida 기반 MobSF 동적 분석 실행"""
     # 설정값 (필요에 따라 변경)
