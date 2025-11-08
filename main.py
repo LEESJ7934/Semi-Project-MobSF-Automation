@@ -1,69 +1,131 @@
 import subprocess
 import os
 import time
-from scripts.mass_dynamic_analysis import upload_apk, run_dynamic_with_frida, request_dynamic_scan
+
+# ⬇️ 'run_cmd' is now imported to be used for 'adb pull'
+from scripts.mass_dynamic_analysis import (
+    upload_apk,
+    run_dynamic_with_frida,
+    request_dynamic_scan,
+    run_cmd,
+)
+
+# ----------------------------------------------------------------------
+# [핵심 설정] 당신의 환경에 맞게 모든 경로 및 API 키 설정 (S:\jeong\semi2)
+# ----------------------------------------------------------------------
+PROJECT_ROOT = r"S:\jeong\semi2\Semi-Project-MobSF-Automation"
+API_KEY = "6b139f46c4fa179a87438571c83c291e799e1bbb59cf1987d22f1fd634df306b"  # 서버 로그에서 확인된 REST API Key
+SERVER_HOST = "127.0.0.1:8000"
 
 
-#정적 분석 실행
+# 정적 분석 실행 (수정 없음)
 def run_mass_static_analysis():
-    
-    apk_dir = r"C:\Users\Seung Jun\Desktop\Semi-Project\Semi-Project-MobSF-Automation\data\apk"
-    server = "127.0.0.1:8000"
-    api_key = "3ad5653dd25b1946d5a20a0053d36fd0dbb1817684f2a9b0a1915f7b4505982b"
-    report_type = 1  # 1: HTML 리포트, 2: JSON 등 가능
+
+    apk_dir = os.path.join(PROJECT_ROOT, "data", "apk")
+    report_type = 1
 
     command = [
         "python",
         "scripts/mass_static_analysis.py",
-        "-d", apk_dir,
-        "-s", server,
-        "-k", api_key,
-        "-r", str(report_type)
+        "-d",
+        apk_dir,
+        "-s",
+        SERVER_HOST,
+        "-k",
+        API_KEY,
+        "-r",
+        str(report_type),
     ]
 
     print(f"[+] Running static analysis...\n{' '.join(command)}\n")
     subprocess.run(command, check=True)
     print("[+] Static analysis completed.\n")
 
-#동적 분석 실행
+
+# 동적 분석 실행 (DEX 덤핑 및 재분석 로직 최종 포함)
+# main.py의 run_mass_dynamic_analysis 함수를 이걸로 덮어쓰세요.
+
+
+# main.py 파일의 이 함수를 통째로 복사해서 붙여넣으세요.
+
+
 def run_mass_dynamic_analysis():
-    """Frida 기반 MobSF 동적 분석 실행"""
-    # 설정값 (필요에 따라 변경)
-    apk_dir = r"C:\Users\Seung Jun\Desktop\Semi-Project\Semi-Project-MobSF-Automation\data\apk"
-    server = "127.0.0.1:8000"
-    api_key = "3ad5653dd25b1946d5a20a0053d36fd0dbb1817684f2a9b0a1915f7b4505982b"
+    """난독화 우회 DEX 덤프 기능을 포함한 Frida 기반 동적 분석 실행"""
 
-    # Frida 관련 경로 설정
-    frida_server_path = r"C:\Users\Seung Jun\Desktop\Semi-Project\Semi-Project-MobSF-Automation\tools\frida-server\frida-server-17.4.4-android-x86"
-    frida_script_path = r"C:\Users\Seung Jun\Desktop\Semi-Project\Semi-Project-MobSF-Automation\mobsf\DynamicAnalyzer\tools\frida_scripts\android\others\ssl-pinning-bypass.js"
+    # ----------------------------------------------------------------------
+    # [1. 환경 설정]
+    # ----------------------------------------------------------------------
+    apk_dir = os.path.join(PROJECT_ROOT, "data", "apk")
 
-    # adb / aapt 경로 설정
-    adb_path = r"adb"  # PATH에 등록되어 있다면 그냥 'adb'로 사용 가능
-    aapt_path = r"C:\Users\Seung Jun\AppData\Local\Android\Sdk\build-tools\36.1.0\aapt.exe"
+    frida_server_path = os.path.join(
+        PROJECT_ROOT, "tools", "frida-server", "frida-server-17.4.4-android-x86"
+    )
+    frida_script_path = os.path.join(
+        PROJECT_ROOT,
+        "mobsf",
+        "DynamicAnalyzer",
+        "tools",
+        "frida_scripts",
+        "android",
+        "others",
+        "DumpDex.js",
+    )
 
-    # 대기 시간 (앱 실행 후 모니터링 시간)
-    wait_seconds = 60
+    adb_path = r"adb"
+    aapt_path = r"aapt"
+    wait_seconds = 120
 
-    # APK 디렉터리 내 모든 APK 찾기
-    apk_files = [os.path.join(apk_dir, f) for f in os.listdir(apk_dir) if f.endswith(".apk")]
+    # ----------------------------------------------------------------------
+    # [2. APK 파일 검색]
+    # ----------------------------------------------------------------------
+    apk_files = [
+        os.path.join(apk_dir, f) for f in os.listdir(apk_dir) if f.endswith(".apk")
+    ]
     if not apk_files:
         print("[!] No APK files found in:", apk_dir)
         return
 
-    print(f"[+] Found {len(apk_files)} APK(s). Starting dynamic analysis using Frida...\n")
+    print(
+        f"[+] Found {len(apk_files)} APK(s). Starting dynamic analysis using Frida...\n"
+    )
 
     for idx, apk_path in enumerate(apk_files, start=1):
         print(f"\n=== ({idx}/{len(apk_files)}) Processing: {apk_path} ===")
 
-        # 1️⃣ MobSF에 APK 업로드 (trace용)
-        upload_resp = upload_apk(server, api_key, apk_path, timeout=120)
+        # 1️⃣ MobSF에 APK 업로드 (난독화된 원본)
+        upload_resp = upload_apk(SERVER_HOST, API_KEY, apk_path, timeout=120)
         if upload_resp is None:
             print("[!] Upload failed — skipping this APK.")
             continue
-        print(f"[+] Upload response keys: {list(upload_resp.keys())}")
+        print(f"[+] Original APK Uploaded. Hash: {upload_resp.get('hash')}")
 
-        # 2️⃣ Frida 기반 동적 분석 실행
+        # ----------------------------------------------------------------------
+        # [✨ 2.5. 덤프 폴더 생성 '및' 권한 설정]
+        # ----------------------------------------------------------------------
+        package_name = "com.ldjSxw.heBbQd"
+        remote_dump_dir = f"/data/local/tmp/dex_dumps/"
+        print(
+            f"[+] Staging: Creating remote dump directory on device: {remote_dump_dir}"
+        )
         try:
+            # 1. adb shell mkdir -p [경로] (폴더 생성)
+            run_cmd([adb_path, "shell", "mkdir", "-p", remote_dump_dir], check=True)
+
+            # 2. [✨ 핵심 수정!] adb shell chmod 777 [경로] (모든 권한 부여)
+            run_cmd([adb_path, "shell", "chmod", "777", remote_dump_dir], check=True)
+
+            print(f"[+] Remote directory created and permissions set to 777.")
+        except Exception as e:
+            print(f"[!] ❌ Failed to create remote directory {remote_dump_dir}: {e}")
+            print("[!] This is critical. Aborting run for this APK.")
+            continue
+
+        # ----------------------------------------------------------------------
+        # [3. 동적 분석 & 4. DEX 덤핑/수집/재분석 (엔진에 모두 위임)]
+        # ----------------------------------------------------------------------
+        try:
+            print(f"[+] Running Frida Dex Dumper (Wait {wait_seconds}s)...")
+
             out_dir = run_dynamic_with_frida(
                 apk_path=apk_path,
                 frida_server_local_path=frida_server_path,
@@ -71,23 +133,25 @@ def run_mass_dynamic_analysis():
                 aapt_path=aapt_path,
                 adb_path=adb_path,
                 run_timeout=wait_seconds,
-                use_tcpdump=True
+                use_tcpdump=False,
+                # [✨ 추가된 인자]
+                server=SERVER_HOST,
+                api_key=API_KEY,
+                project_root=PROJECT_ROOT,
+                package_name=package_name,
+                remote_dump_dir=remote_dump_dir,
             )
-            print(f"[+] Dynamic (Frida) analysis completed. Artifacts saved to: {out_dir}")
+            print(
+                f"[+] Dynamic (Frida) analysis completed. Artifacts saved to: {out_dir}"
+            )
         except Exception as e:
             print(f"[!] Dynamic analysis failed for {apk_path}: {e}")
+            continue
 
-        # 3️⃣ (선택) MobSF dynamic_scan API 호출 (현재 MobSF 버전에선 404일 수 있음)
-        # dyn_resp = request_dynamic_scan(server, api_key, "/api/v1/dynamic_scan/", upload_resp, timeout=120)
-        # if dyn_resp:
-        #     print("[+] MobSF dynamic API response received.")
-        # else:
-        #     print("[!] MobSF dynamic API unavailable (404 expected).")
+        print(f"[*] Sleeping {wait_seconds // 2}s before next APK...")
+        time.sleep(wait_seconds // 2)
 
-        print(f"[*] Sleeping {wait_seconds}s before next APK...")
-        time.sleep(wait_seconds)
-
-    print("\n[+] All APKs processed. Dynamic analysis completed.\n")
+    print("\n[+] All APKs processed. Automation pipeline completed.\n")
 
 
 def main():
